@@ -77,15 +77,30 @@ class Zend_ProgressBar
     protected $_persistenceNamespace = null;
 
     /**
+     * Moment of the last notification
+     *
+     * @var float
+     */
+    protected $_lastNotification; 
+
+    /**
+     * Minimum time between two notifications
+     *
+     * @var float
+     */
+    protected $_notificationDelay;    
+
+    /**
      * Create a new progressbar backend.
      *
      * @param  Zend_ProgressBar_Adapter $adapter
      * @param  float                    $min
      * @param  float                    $max
      * @param  string                   $persistenceNamespace
+     * @param  integer                  $framesPerSecound
      * @throws Zend_ProgressBar_Exception When $min is greater than $max
      */
-    public function __construct(Zend_ProgressBar_Adapter $adapter, $min = 0, $max = 100, $persistenceNamespace = null)
+    public function __construct(Zend_ProgressBar_Adapter $adapter, $min = 0, $max = 100, $persistenceNamespace = null, $framesPerSecond = 15)
     {
         // Check min/max values and set them
         if ($min > $max) {
@@ -125,6 +140,9 @@ class Zend_ProgressBar
         } else {
             $this->update();
         }
+        
+        // Set notificationDelay
+        $this->_notificationDelay = 1 / $framesPerSecond;
     }
 
     /**
@@ -179,7 +197,11 @@ class Zend_ProgressBar
         }
 
         // Poll the adapter
-        $this->_adapter->notify($this->_current, $this->_max, $percent, $timeTaken, $timeRemaining, $this->_statusText);
+        $microtime = microtime(true);
+        if ($this->_current == $this->_max || !isset($this->_lastNotification) || ($microtime - $this->_lastNotification) > $this->_notificationDelay) {
+            $this->_adapter->notify($this->_current, $this->_max, $percent, $timeTaken, $timeRemaining, $this->_statusText);
+            $this->_lastNotification = $microtime;
+        }
     }
 
     /**
